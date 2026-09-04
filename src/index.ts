@@ -263,7 +263,17 @@ server.tool(
 
 server.tool(
   "save_writeup",
-  "Save a writeup (markdown). Record Thai for human review, English for AI-generated.",
+  [
+    "Save a writeup as markdown. Record Thai for human review, English for AI-generated.",
+    "",
+    "Markdown is rendered on the challenge page — headings, code blocks, tables and",
+    "images all display. To embed an image:",
+    '  1. upload it with upload_artifact → returns an artifact id',
+    `  2. reference it in the markdown as ![alt text](/artifacts/<id>)`,
+    "",
+    "External image URLs (https://...) also render. Do NOT use relative paths",
+    "like /_astro/... — they will 404 on the FlagForge site.",
+  ].join("\n"),
   {
     challenge_id: z.string().uuid(),
     language: z.enum(["thai", "english"]),
@@ -308,6 +318,72 @@ server.tool(
   async ({ challenge_id }) => ({
     content: [{ type: "text", text: JSON.stringify(await call("GET", `/challenges/${challenge_id}/artifacts`), null, 1) }],
   })
+);
+
+server.tool(
+  "upload_artifact",
+  [
+    "Upload a file (screenshot, pcap, note) to a challenge as an artifact.",
+    "",
+    "Provide either a local file path (read from disk) or raw content bytes",
+    "with a filename. Returns the artifact record — use its id to embed images",
+    "in writeups: ![alt text](/artifacts/<id>)",
+  ].join("\n"),
+  {
+    challenge_id: z.string().uuid(),
+    file_path: z.string().optional(),
+    filename: z.string().optional(),
+    content_base64: z.string().optional(),
+    mime_type: z.string().optional(),
+  },
+  async ({ challenge_id, file_path, filename, content_base64, mime_type }) => {
+    let data: Buffer;
+    let name: string;
+    if (file_path) {
+      const fs = await import("node:fs/promises");
+      data = await fs.readFile(file_path);
+      name = filename ?? file_path.split(/[\\/]/).pop() ?? "artifact";
+    } else if (content_base64) {
+      data = Buffer.from(content_base64, "base64");
+      name = filename ?? "artifact";
+    } else {
+      return {
+        content: [{ type: "text", text: "error: provide file_path or content_base64" }],
+        isError: true,
+      };
+    }
+    const form = new FormData();
+    form.append(
+      "file",
+      new Blob([new Uint8Array(data)], { type: mime_type ?? "application/octet-stream" }),
+      name
+    );
+    const res = await fetch(`${API}/challenges/${challenge_id}/artifacts`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${TOKEN}` },
+      body: form,
+    });
+    const text = await res.text();
+    let parsed: unknown;
+    try { parsed = text ? JSON.parse(text) : {}; } catch { parsed = text; }
+    if (!res.ok) {
+      return {
+        content: [{ type: "text", text: `upload failed (${res.status}): ${text}` }],
+        isError: true,
+      };
+    }
+    const result = parsed as { artifact?: { id?: string } };
+    const id = result.artifact?.id;
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          ...result,
+          ...(id ? { markdown_snippet: `![${name}](/artifacts/${id})` } : {}),
+        }, null, 1),
+      }],
+    };
+  }
 );
 
 // ---------- Run ----------

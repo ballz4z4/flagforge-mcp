@@ -84,7 +84,7 @@ claude mcp add flagforge -e FLAGFORGE_BASE_URL=http://localhost:3000 -e FLAGFORG
 
 | Tool | สิทธิ์ขั้นต่ำ | คำอธิบาย |
 |---|---|---|
-| `save_writeup` | solver | บันทึก writeup (language: `thai` = มนุษย์เขียน / `english` = AI generate, status: draft/reviewed/final) |
+| `save_writeup` | solver | บันทึก writeup เป็น **markdown** (render จริงบนหน้าเว็บ: หัวข้อ, code block, ตาราง, รูป) — language: `thai` = มนุษย์เขียน / `english` = AI generate, status: draft/reviewed/final |
 | `get_writeup` | reader | อ่าน writeup ทั้งสองภาษา |
 
 ### ค้นหา + Artifacts
@@ -93,6 +93,7 @@ claude mcp add flagforge -e FLAGFORGE_BASE_URL=http://localhost:3000 -e FLAGFORG
 |---|---|---|
 | `search_knowledge` | reader | ค้นหาทุก event: คำอธิบายโจทย์, writeup ไทย/อังกฤษ, tags — หาว่าโจทย์แนวนี้เคยแก้ยังไง |
 | `list_artifacts` | reader | ไฟล์แนบโจทย์ (images, pcaps, notes) พร้อม sha256 |
+| `upload_artifact` | solver (หรือ permission `artifacts.upload`) | อัปโหลดไฟล์ (รูป, pcap, note) — ส่ง `file_path` (อ่านจากดิสก์) หรือ `content_base64` + `filename` — ตอบกลับพร้อม `markdown_snippet` สำหรับฝังรูปใน writeup |
 
 ## Workflow ที่แนะนำ
 
@@ -120,6 +121,9 @@ set_challenge_status(challenge_id=..., status="solved")
 ### 3. หลังแก้เสร็จ — เขียน writeup
 
 ```
+# ฝังรูปใน writeup: upload ก่อน แล้วใช้ markdown_snippet ที่ได้
+upload_artifact(challenge_id=..., file_path="screenshot.png")
+# → { artifact: {...}, markdown_snippet: "![screenshot.png](/artifacts/<id>)" }
 save_writeup(challenge_id=..., language="thai",
              markdown="## วิธีแก้\n\n...", status="final")
 ```

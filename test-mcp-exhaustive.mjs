@@ -1,4 +1,4 @@
-// Exhaustive MCP e2e: all 18 tools, error paths, permissions, full flag lifecycle.
+// Exhaustive MCP e2e: all 19 tools, error paths, permissions, full flag lifecycle.
 // Usage: FLAGFORGE_TOKEN=<admin token> READER_TOKEN=<reader token> node test-mcp-exhaustive.mjs
 import { spawn } from "node:child_process";
 
@@ -81,7 +81,7 @@ try {
   record("initialize (both clients)", true);
 
   const tools = await admin.rpc("tools/list", {});
-  record("tools/list = 18 tools", tools.tools.length === 18, `${tools.tools.length}`);
+  record("tools/list = 19 tools", tools.tools.length === 19, `${tools.tools.length}`);
 
   const SUFFIX = Date.now().toString(36);
   const SLUG = `mcp-xt-${SUFFIX}`;
